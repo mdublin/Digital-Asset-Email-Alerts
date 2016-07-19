@@ -1,0 +1,4 @@
+feedparser==5.2.1
+mailthon==0.1.1
+SQLAlchemy==1.0.14
+wheel==0.24.0
