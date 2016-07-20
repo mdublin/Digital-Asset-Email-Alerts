@@ -2,15 +2,25 @@
 #! /usr/bin/python
 # -*- coding: utf-8 -*-
 
-import models
 import feedparser
 
 # import email alert 
 from email_alert import send_alert
 
+# db imports
+from models import Base, Video
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy import create_engine
+
+
+engine = create_engine('sqlite:///notifications.db')
+Base.metadata.bind = engine
+DBSession = sessionmaker(bind=engine)
+session = DBSession()
 
 # create video table object
-Video = models.Video()
+#Video = models.Video()
 
 
 # receiving user_tag text submitted by user via TagSearchForm on
@@ -20,8 +30,7 @@ Video = models.Video()
 
 def mediaload():
 
-    # Brightcove API feed for CMS
-    video_feed = "http://api.brightcove.com/services/library?command=search_videos&all=tag:smgv&all=tag:rio%202016&output=mrss&media_delivery=http&sort_by=CREATION_DATE:DESC&token={token}"
+    video_feed = "http://api.brightcove.com/services/library?command=search_videos&all=tag:smgv&all=tag:rio%202016&output=mrss&media_delivery=http&sort_by=CREATION_DATE:DESC&token={API READ TOKEN}"
 
     d = feedparser.parse(video_feed)
 
@@ -105,26 +114,6 @@ def mediaload():
 
         tags = post.media_keywords
 
-        '''
-        # -- For each video in the item dict
-        for video in videos:
-            # -- If the video has a value for its bitrate
-            if 'bitrate' in video:
-                # -- Extract the value of this video's bitrate
-                bitrate_str = video['bitrate']
-        # -- and convert it to an integer (by default it is a string in the XML)
-                curr_bitrate = int(bitrate_str)
-            # -- If the bitrate of this video is greater than
-            # -- the highest bitrate we've seen, mark this video as the one with
-            # -- the highest birate.
-                if curr_bitrate > max_bitrate:
-                    max_bitrate = curr_bitrate
-                vid_url = video['url']
-        # -- This line simply prints out the maximum bitrate and current video URL for each iteration
-        # print "{} url {}".format(max_bitrate, vid_url)
-        # print "highest bitrate {} url {}".format(max_bitrate, vid_url)
-        '''
-
         item['tags'] = tags
         item['url'] = vid_url
         item['thumbnail'] = thumbnail_url
@@ -171,12 +160,21 @@ def mediaload():
     # list to dict 
     alert_video_package = asset_return_list[0]
     
-    # call email script with video asset package 
-    send_alert(alert_video_package)
+    check_video_id = alert_video_package["videoID"]
+
+    # check if videoID just pulled has already been included in email alert
+    video = session.query(Video).filter_by(bc_id = check_video_id).first()
+    if video:
+        print "An alert for videoID: %s has already be sent" % (check_video_id)
+    if not video:
+        print "Sending alert...."
+        # call email script with video asset package     
+        send_alert(alert_video_package)
     
     return asset_return_list
 
 
 if __name__ == "__main__":
     mediaload()
+
 

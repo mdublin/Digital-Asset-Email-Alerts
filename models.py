@@ -4,9 +4,7 @@ from sqlalchemy.ext.declarative import declarative_base
 
 import datetime
 
-engine = create_engine('sqlite:///notifications.db')
-Session = sessionmaker(bind=engine)
-session = Session()
+
 Base = declarative_base()
 
 
@@ -21,10 +19,11 @@ class Video(Base):
     id = Column(Integer, primary_key=True)
     title = Column(String, nullable=True)
     bc_id = Column(String, nullable=True)
-    bc_desc = Column(String, nullable=True)
     sent_date = Column(DateTime, default=datetime.utcnow)
     Google_server_response = Column(String, nullable=False)
 
 
 
+engine = create_engine('sqlite:///notifications.db')
 Base.metadata.create_all(engine)
+

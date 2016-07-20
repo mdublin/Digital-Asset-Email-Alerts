@@ -15,6 +15,18 @@ from mailthon import postman as postman_
 
 from mailthon import email
 
+# db imports
+from models import Base, Video
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy import create_engine
+
+
+
+engine = create_engine('sqlite:///notifications.db')
+Base.metadata.bind = engine
+Session = sessionmaker(bind=engine)
+session = Session()
 
 
 # sometimes you need to debug the email server:
@@ -34,8 +46,8 @@ def send_alert(alert_video_package):
     '''
     envelope = Envelope(
         headers={
-            'Sender': 'sender <sender@mail.com>',
-            'To': 'anotheraccount@mail.com',
+            'Sender': 'sender <linski@mail.com>',
+            'To': 'genius@mail.com',
             'Subject': 'Hello World!',
         },
         enclosure=[
@@ -47,7 +59,7 @@ def send_alert(alert_video_package):
     # this is email with an HTML enclosure, not plaintext like above
 
     envelope = email(
-        sender='sender <sender@gmail.com>',
+        sender='sender <linski@gmail.com>',
         receivers=['dude@company.com', 'genius@gmail.com'],
         subject='Rio Olympics video alert',
         content="""\
@@ -59,7 +71,7 @@ def send_alert(alert_video_package):
                 <table class="table table-inverse">
                     <thead>
                         <tr>
-                            <th>The following video is available in Brightcove:</th>
+                            <th>The following video is available in Gannett - USA TODAY Brightcove account:</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -96,7 +108,7 @@ def send_alert(alert_video_package):
         port=587,
         middlewares=[
             TLS(force=True),
-            Auth(username='nski@gmail.com', password='123233')
+            Auth(username='youremail@gmail.com', password='23123')
         ],
     )
     '''
@@ -108,7 +120,7 @@ def send_alert(alert_video_package):
         host='smtp.gmail.com',
         port=587,
         force_tls=True,
-        auth=('nski@gmail.com','123223'),
+        auth=('youremail@gmail.com', password='23123'),
     )
 
     # send envelope
@@ -116,6 +128,14 @@ def send_alert(alert_video_package):
     response = postman.send(envelope)
     print response.message
     print response.status_code
+
+    # check for SMTP replay code of 250 == Requested mail action okay, completed
+    if response.status_code == 250:
+        video = Video(title = title, bc_id = bc_id, Google_server_response = response.message)
+        session.add(video)
+        session.commit()
+
     return response.status_code
+
 
 
