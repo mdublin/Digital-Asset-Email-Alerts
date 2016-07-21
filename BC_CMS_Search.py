@@ -2,9 +2,14 @@
 #! /usr/bin/python
 # -*- coding: utf-8 -*-
 
+import logging
+import sys
+#import traceback
+
+
 import feedparser
 
-# import email alert 
+# import email alert
 from email_alert import send_alert
 
 # db imports
@@ -13,33 +18,41 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 from sqlalchemy import create_engine
 
-
+# db config
 engine = create_engine('sqlite:///notifications.db')
 Base.metadata.bind = engine
 DBSession = sessionmaker(bind=engine)
 session = DBSession()
 
-# create video table object
-#Video = models.Video()
 
-
-# receiving user_tag text submitted by user via TagSearchForm on
-# http://127.0.0.1:5000/protected
-
+# logging config
+logging.basicConfig(
+    filename='BC_CMS_Search.log',
+    stream=sys.stdout,
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s')
+log = logging.getLogger("ex")
 
 
 def mediaload():
 
+    # feedparser start
     video_feed = "http://api.brightcove.com/services/library?command=search_videos&all=tag:smgv&all=tag:rio%202016&output=mrss&media_delivery=http&sort_by=CREATION_DATE:DESC&token={API READ TOKEN}"
 
     d = feedparser.parse(video_feed)
 
-    # checking feed for any errors (i.e. "bozo" errors: https://pythonhosted.org/feedparser/bozo.html#advanced-bozo), bozo_exception will still exist in the parse response, but it's value would be 
-    
+    # checking feed for any errors (i.e. "bozo" errors:
+    # https://pythonhosted.org/feedparser/bozo.html#advanced-bozo),
+    # bozo_exception will still exist in the parse response, but it's value
+    # would be
+
     if 'bozo_exception' in d:
         print 'bozo_exception', d['bozo_exception']
-        return d['bozo_exception']
-    
+        # instead of returning the bozo_exception, we are raising it so it gets
+        # caught as Exception and logged
+        raise d['bozo_exception']
+        # return d['bozo_exception']
+
     response_array = []
 
     # list returned of dicts for each video, this will be sent to, and
@@ -48,9 +61,8 @@ def mediaload():
 
     # -- For each item in the feed
     for index, post in enumerate(d.entries):
-        #print index, post
 
-        if index >= 1:
+        if index >= 10:
             break
         # Here we set up a dictionary in order to extract selected data from the
         # original brightcove "post" result
@@ -61,22 +73,23 @@ def mediaload():
         item['url'] = u"%s" % post.link,
         # item['tags'] = post.media_keywords.split(",")
         item['videoID'] = post.bc_titleid,
-
         max_bitrate = 0
         vid_url = None
         #videos = post.media_content
 
         # trying to deal with this errory that only occurs occasionally for reasons yet not known:
-        # feedparser.py", line 400, in __getattr__ raise AttributeError, "object has no attribute '%s'" % key AttributeError: object has no attribute 'media_content'
+        # feedparser.py", line 400, in __getattr__ raise AttributeError,
+        # "object has no attribute '%s'" % key AttributeError: object has no
+        # attribute 'media_content'
 
         try:
             videos = post.media_content
-            
+
             # -- For each video in the item dict
             for video in videos:
-            # -- If the video has a value for its bitrate
+                # -- If the video has a value for its bitrate
                 if 'bitrate' in video:
-                # -- Extract the value of this video's bitrate
+                    # -- Extract the value of this video's bitrate
                     bitrate_str = video['bitrate']
         # -- and convert it to an integer (by default it is a string in the XML)
                     curr_bitrate = int(bitrate_str)
@@ -91,28 +104,48 @@ def mediaload():
         # print "highest bitrate {} url {}".format(max_bitrate, vid_url)
 
         except AttributeError:
-        #    print("post.media_content is throwing an AttributeError...probably for no reason. Keep refreshing the page or restart the server.")
+            #    print("post.media_content is throwing an AttributeError...probably for no reason. Keep refreshing the page or restart the server.")
             videos = "http://127.0.0.1:8000/"
-            vid_url = videos        
+            vid_url = videos
 
-        # get thumbnail image URL 
+        # get thumbnail image URL
         try:
             thumbnails = post.media_thumbnail[0]
             thumbnail_url = thumbnails['url']
         except AttributeError:
             thumbnail_url = None
-        
-        #print thumbnails
+
+        # print thumbnails
         #thumbnail_url = None
         #max_height = 90
-        
-        #for thumbnail in thumbnails:
+
+        # for thumbnail in thumbnails:
         #    if 'height' in thumbnail:
         #        height = thumbnail['height']
         #        if height == '90':
         #            thumbnail_url = thumbnail['url']
 
         tags = post.media_keywords
+
+        '''
+        # -- For each video in the item dict
+        for video in videos:
+            # -- If the video has a value for its bitrate
+            if 'bitrate' in video:
+                # -- Extract the value of this video's bitrate
+                bitrate_str = video['bitrate']
+        # -- and convert it to an integer (by default it is a string in the XML)
+                curr_bitrate = int(bitrate_str)
+            # -- If the bitrate of this video is greater than
+            # -- the highest bitrate we've seen, mark this video as the one with
+            # -- the highest birate.
+                if curr_bitrate > max_bitrate:
+                    max_bitrate = curr_bitrate
+                vid_url = video['url']
+        # -- This line simply prints out the maximum bitrate and current video URL for each iteration
+        # print "{} url {}".format(max_bitrate, vid_url)
+        # print "highest bitrate {} url {}".format(max_bitrate, vid_url)
+        '''
 
         item['tags'] = tags
         item['url'] = vid_url
@@ -133,7 +166,7 @@ def mediaload():
         # foo = type(i)
         # print "this is type check of tuple extract on line 70: %s" % foo
         videoDescription = item['description']
-        
+
     #video_package = {}
     for asset_dict in response_array:
         video_package = {}
@@ -154,27 +187,32 @@ def mediaload():
                 'thumbnail': extract_thumbnail_tupe
             }
         )
-        
+
         asset_return_list.append(video_package)
 
-    # list to dict 
-    alert_video_package = asset_return_list[0]
-    
-    check_video_id = alert_video_package["videoID"]
+    # list to dict
+    #alert_video_package = asset_return_list[0]
 
-    # check if videoID just pulled has already been included in email alert
-    video = session.query(Video).filter_by(bc_id = check_video_id).first()
-    if video:
-        print "An alert for videoID: %s has already be sent" % (check_video_id)
-    if not video:
-        print "Sending alert...."
-        # call email script with video asset package     
-        send_alert(alert_video_package)
-    
+    # iterating through the asset_return_list list, which contains a dict at each index that is a video package.
+    # we check the videoID in each dict video package in the list and see if it is already been logged to the db
+    # if not, trigger email alert module
+    for index, item in enumerate(asset_return_list):
+        print item["videoID"]
+        video = session.query(Video).filter_by(bc_id=item["videoID"]).first()
+        if video:
+            print "An alert for videoID: %s has already be sent" % (item["videoID"])
+        if not video:
+            print "Sending alert...."
+            # call email script with video asset package
+            send_alert(asset_return_list[index])
+
     return asset_return_list
 
 
 if __name__ == "__main__":
-    mediaload()
-
+    # mediaload()
+    try:
+        mediaload()
+    except Exception as e:
+        log.exception("Error!", exc_info=True)
 
