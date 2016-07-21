@@ -7,7 +7,7 @@ What does this do?
 
 This script uses the very elegantly written Mailthon package to send emailalerts, in this case configured to work with Gmail, to send email alerts tthat are trigged with assets with a specific metatag appear in a digital asset CMS or MAM system. 
 
-The CMS or MAM can be pinged any which way; in this particular example, we're using an mrss API feed, but the method isn't important. As long as you have a simple database setup to handle the deduplication functionality, and parse your CMS/MAM query results efficiently, you can use the `email_alert.py` script to be triggered to send a nicely formatted email alert (styled with Bootstrap) to any number of receipients.
+The CMS or MAM can be pinged any which way; in this particular example, we're using an mrss API feed, but the method isn't important. As long as you have a simple database setup to handle the deduplication functionality, and parse your CMS/MAM query results efficiently, you can use the `email_alert.py` script to be triggered to send a nicely formatted email alert (styled with Bootstrap) to any number of recipients.
 
 To deploy:
 
