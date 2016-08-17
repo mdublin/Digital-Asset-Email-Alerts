@@ -1,9 +1,3 @@
-To run: 
-
-`$ python BC_CMS_SEARCH.py`
-
-
-What does this do? 
 
 This script uses the very elegantly written Mailthon package to send email alerts, in this case configured to work with Gmail, to send email alerts tthat are trigged with assets with a specific metatag appear in a digital asset CMS or MAM system. 
 
@@ -15,4 +9,6 @@ To deploy:
 2. Install the dependencies via `$ pip install -r requirements.txt`
 3. Make sure you have sqlite3 installed
 4. If you're running this via cron job, which is how it typically would be implemented, make sure that you provide the right URI to your .db file. Depending upon where you create your cron job via `$ crontab -e` you need to make sure the create_engine URI is correct. For example, if you create a cron job in your home directory, which is one directory above the projectfile, you need to amened the URI so something like `sqlite3:///projectdirectory/notifications.db` instead of just `sqlite3:///notifications.db`
+5. To run: `$ python BC_CMS_SEARCH.py`
+
 
